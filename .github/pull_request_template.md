@@ -18,7 +18,8 @@
 ### How to test it
 <!--Provide the steps to test this PR.-->
 
-- [ ] Successful deployment to gh-pages
+- [ ] Successful deployment to cloudflare pages
+- [ ] Check https://obol.org/<file_name>
 
 ### Screenshots
 <!--Provide a set of screenshots and/or a gif to se the main functionality this PR represents.-->
