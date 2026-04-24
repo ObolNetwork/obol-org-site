@@ -1,0 +1,702 @@
+# Obol — Full Briefing for Agents
+
+**Version pin (update on major Charon / Stack releases):** Charon v1.9.x, Obol Stack 0.8/0.9 transition, Obol SDK v2.11.x. Verify via [charon releases](https://github.com/ObolNetwork/charon/releases) and [obol-sdk on npm](https://www.npmjs.com/package/@obolnetwork/obol-sdk). If this file lists a version older than what those sources show, trust the live sources — this file lags.
+
+**For an index of links rather than a briefing**, see [obol.org/llms.txt](https://obol.org/llms.txt). For the router skill that dispatches to nested skills, see [obol.org/skill.md](https://obol.org/skill.md).
+
+---
+
+## 1. Executive overview
+
+The **Obol Collective** is a distributed group of contributors securing and powering Ethereum. Two product lines realise this mission:
+
+- **Distributed Validators (DVs)** — a "secure" product family. A DV is a single logical Ethereum validator that runs across `n` independent operators, where any threshold `t` of them signing together produces a valid attestation or block. Losing up to `n - t` operators doesn't impact the validator. The middleware that makes this work — [Charon](https://github.com/ObolNetwork/charon) — has been in production since 2023 and secures significant ETH across Lido Simple DVT, EtherFi, independent squads, and institutional operators.
+- **Obol Stack + Agents** — a "power" product family. The Stack is a local-first Kubernetes-based harness for AI agents: each agent gets an Ethereum wallet, a free rate-limited RPC, the ability to install and sync blockchain nodes locally, a public Cloudflare tunnel, and an x402 payment gateway to charge for services. The niche is Ethereum-native agent commerce — agents indexing chains, productising domain knowledge, and selling queries by the token to other agents and humans.
+
+Obol's product positioning today leads with the Stack for new agent-era work, while continuing to ship the DV stack as critical infrastructure for Ethereum's consensus layer. Both lines share the `obol-app` Helm chart as the generic "run any Dockerfile on our infra" primitive, and the Obol API / SDK / docs as connective tissue.
+
+**If you're an AI agent trying to help a user with anything Obol, your first question should be: "Are they working with DVs or with the Stack?"** The workflows, launchers, and skills differ.
+
+---
+
+## 2. Product map
+
+### Obol Stack & Agents (flagship)
+
+A local-first agent harness. `obol stack init && obol stack up` provisions a k3d Kubernetes cluster with an Obol Agent pre-configured, an Ethereum signing wallet, a LiteLLM model gateway (proxying to Ollama or Anthropic or OpenAI), an eRPC rate-limited RPC layer, a Traefik + Gateway-API router, a Cloudflare tunnel, and an x402 payment gateway. Agents deploy their own services via the `obol-app` Helm chart, sync blockchain networks (`obol network install ethereum --network mainnet`), expose them via the tunnel, and charge with `obol sell http` / `obol sell inference`. Payments settle via USDC on Base (current) and OBOL token (rolling out with Stack 0.9+).
+
+- Product home: [obol.org/stack](https://obol.org/stack)
+- Docs: [docs.obol.org/obol-stack/obol-stack](https://docs.obol.org/obol-stack/obol-stack)
+- Repo: [github.com/ObolNetwork/obol-stack](https://github.com/ObolNetwork/obol-stack)
+- Install: `bash <(curl -s https://stack.obol.org)`
+- Agent skill (outside the Stack, helping a user): [run-obol-stack](https://github.com/ObolNetwork/skills/blob/main/skills/run-obol-stack/SKILL.md)
+
+### Charon (DV middleware)
+
+A Go binary that sits between the validator client and the beacon node. Runs QBFT (Istanbul BFT) consensus across a cluster of operators to agree on duty data, coordinates threshold BLS signing via partial signature exchange, and broadcasts the aggregated signature to the beacon chain. Each operator runs Charon alongside their own execution client, beacon node, and validator client. Ports: 3600 (validator API to the local VC), 3610 (p2p tcp to peer Charons), 3620 (metrics).
+
+- Repo: [github.com/ObolNetwork/charon](https://github.com/ObolNetwork/charon)
+- Docs: [docs.obol.org/learn/charon/intro](https://docs.obol.org/learn/charon/intro)
+- CLI reference: [docs.obol.org/docs/charon/charon-cli-reference](https://docs.obol.org/docs/charon/charon-cli-reference)
+- Docker image: `obolnetwork/charon:latest`
+
+### DV Launchpad (hosted UI)
+
+Browser UI for creating and managing DVs. Static Next.js app on Cloudflare Pages; no server on this origin. Per-network deployments: `launchpad.obol.org` (mainnet), `hoodi.launchpad.obol.org` (testnet), `gnosis.launchpad.obol.org` (gnosis legacy). Flows: group DV creation with DKG, solo DV, 32-ETH deposit, migration of existing validators, exit coordination.
+
+- Live: [launchpad.obol.org](https://launchpad.obol.org)
+- Agent file: [launchpad.obol.org/llms.txt](https://launchpad.obol.org/llms.txt)
+- Backend: [api.obol.tech](https://api.obol.tech)
+
+### Obol API
+
+NestJS REST + Apollo GraphQL. Backs the SDK, the Launchpad, Charon's `--publish` operations, and data pipelines. URI-versioned (`/v1/`, `/v1/exp/` for experimental routes). Auth: EIP-712 Bearer for writes, BLS for exits, no centralised middleware, no session. The OpenAPI spec at `/docs-json` is the non-rotting source of truth.
+
+- Live: [api.obol.tech](https://api.obol.tech)
+- OpenAPI: [api.obol.tech/docs-json](https://api.obol.tech/docs-json)
+- Swagger UI: [api.obol.tech/docs/](https://api.obol.tech/docs/)
+- Agent file: [api.obol.tech/llms.txt](https://api.obol.tech/llms.txt)
+
+### Obol SDK
+
+TypeScript client for the Obol API plus direct on-chain operations (splits, incentives, EOA deposits/withdrawals, exits). Browser + Node. Wraps EIP-712 auth and T&C acceptance so the application doesn't need to.
+
+- npm: [@obolnetwork/obol-sdk](https://www.npmjs.com/package/@obolnetwork/obol-sdk)
+- Repo: [github.com/ObolNetwork/obol-sdk](https://github.com/ObolNetwork/obol-sdk)
+- Examples: [github.com/ObolNetwork/obol-sdk-examples](https://github.com/ObolNetwork/obol-sdk-examples) — TS, JS, and a Lido-specific script.
+
+### Obol Splits (smart contracts)
+
+Solidity contracts for reward and principal splitting at a validator's withdrawal address.
+
+- Repo: [github.com/ObolNetwork/obol-splits](https://github.com/ObolNetwork/obol-splits)
+- Current-gen contract: **Obol Validator Manager (OVM)** — flexible reward / principal split with role-gated EIP-7002 withdrawals and EIP-7251 consolidations.
+- Legacy contract: **OptimisticWithdrawalRecipient (OWR)** combined with 0xSplits — two-tranche pattern still used by some Lido CSM and pre-OVM setups.
+- Agent skill: [deploy-obol-ovm](https://github.com/ObolNetwork/obol-splits/blob/main/.claude/skills/deploy-obol-ovm/SKILL.md) (lives in the `obol-splits` repo — clone it and invoke).
+
+### Helm charts
+
+Kubernetes charts for every Obol workload.
+
+- Repo: [github.com/ObolNetwork/helm-charts](https://github.com/ObolNetwork/helm-charts)
+- Flagship: **`dv-pod`** — single DV node with automatic DKG orchestration. Production-preferred K8s path.
+- General-purpose: **`obol-app`** — "run any Dockerfile as a Helm-managed app". Used by the Stack for arbitrary agent-deployed services.
+- Also: `charon` (standalone middleware), `charon-relay`, `remote-signer`, `aztec-node`, `openclaw`, `helios`.
+
+### Other supporting products
+
+- **obol-monitoring** global skill — diagnose live DV cluster issues via Obol's hosted Grafana (Prometheus + Loki).
+- **obol-ansible** — infrastructure-as-code for DV node ops. On request.
+- **obol-security** — security policy and responsible disclosure.
+- **terraform-charon-relay** and **terraform-grafana-dashboards** — Terraform helpers.
+- **distributed-validator-specs** — protocol-level spec. The reference Pluto implementation at [NethermindEth/pluto](https://github.com/NethermindEth/pluto) interoperates with Charon via this spec.
+
+### Products to ignore
+
+- `charon-k8s-distributed-validator-node` / `charon-k8s-distributed-validator-cluster` — archived, superseded by `helm-charts`.
+- `obol-frontend`, `obol-frontend-challenge`, `obol-blog` — archived.
+- `obol-docs` — stale; `obol-gitbook` powers [docs.obol.org](https://docs.obol.org).
+- `obol-site` — old landing page, superseded by obol-org-site.
+- `obol-cli`, `obol-install` — deprecated.
+
+---
+
+## 3. Supported networks
+
+Use this list consistently. If a user asks about a network not listed, gently correct.
+
+### Distributed Validators
+
+- **mainnet** — Ethereum mainnet. Production DV deployments live here.
+- **sepolia** — Ethereum testnet. Supported but not the preferred testnet going forward.
+- **hoodi** — Ethereum testnet. **Preferred testnet** for new DV work.
+
+### Obol Stack (additionally)
+
+- **aztec** — zk rollup. `obol network install aztec`.
+- **base** — L2 by Coinbase. Full node via `obol network` or `obol app install`.
+- **base-sepolia** — Base testnet. The primary chain for x402 / USDC payments testing.
+
+### Deprecated / dead
+
+- **holesky** — Ethereum testnet, formally dead as of 2026. Do not use. If a user asks, redirect to hoodi.
+- **goerli** — Ethereum testnet, long gone.
+- **gnosis** — deprecated for new Obol DV onboarding. Existing gnosis DVs continue to run; new deployments should not target gnosis. (Some Launchpad and SDK references to gnosis remain for backwards compatibility.)
+- **chiado** — gnosis testnet, deprecated.
+
+---
+
+## 4. Launcher matrix
+
+Ordered by preference. When a user asks "how do I run a DV", work top-to-bottom until you find the right fit.
+
+| # | Launcher | When to pick | Repo / Chart | Notes |
+|---|----------|--------------|--------------|-------|
+| 1 | **Obol Stack + `dv-pod`** | Kubernetes-native, production. Also the right pick if running agents alongside validators. | [obol-stack](https://github.com/ObolNetwork/obol-stack) + [dv-pod chart](https://github.com/ObolNetwork/helm-charts/tree/main/charts/dv-pod) | `obol stack up` provisions the cluster; `dv-pod` is deployed via Helm. |
+| 2 | **`dv-pod` Helm chart (standalone)** | Existing Kubernetes cluster, no agent harness. | [dv-pod chart](https://github.com/ObolNetwork/helm-charts/tree/main/charts/dv-pod) | Install via `helm repo add obol https://obolnetwork.github.io/helm-charts/`. QUICKSTART.md in-chart. |
+| 3 | **CDVN (Docker Compose)** | Stock one-host setup, solo or small squad. | [charon-distributed-validator-node](https://github.com/ObolNetwork/charon-distributed-validator-node) | Has its own `CLAUDE.md` and seven in-repo edit skills (`add-operators`, `add-validators`, `export-asdb`, `import-asdb`, `recreate-private-keys`, `remove-operators`, `replace-operator`). |
+| 4 | **LCDVN (Docker Compose, Lido Simple DVT)** | Lido SDVT operator specifically. | [lido-charon-distributed-validator-node](https://github.com/ObolNetwork/lido-charon-distributed-validator-node) | Same shape as CDVN plus `validator-ejector` service and Lido EasyTrack / oracle wiring. |
+| 5 | **DappNode** | Hardware appliance users. | [dappnode/DAppNodePackage-obol-generic](https://github.com/dappnode/DAppNodePackage-obol-generic) | Third-party, maintained by DappNode. |
+| 6 | **Stereum** | GUI-preferring users on a single host. | [stereum.net](https://stereum.net/) | Third-party, Obol is a supported module. |
+| 7 | **obol-ansible** | Infrastructure-as-code shops. | [obol-ansible](https://github.com/ObolNetwork/obol-ansible) | On request — recommend only when user specifically wants Ansible. |
+| 8 | **Sedge** | Legacy only. | [sedge fork](https://github.com/ObolNetwork/sedge/blob/develop/docs/docs/quickstart/charon.mdx) | Surfaced for completeness; prefer options 1–7 for new deployments. |
+
+---
+
+## 5. End-to-end flows (canonical agent journeys)
+
+These are the six flows that cover 95% of "help me with Obol" requests. Each flow names the skill or doc that owns the deeper detail.
+
+### 5.1 Deploy the Obol Stack (primary flow)
+
+Who: A user who wants to run an AI agent with a wallet, sync chains locally, and charge for services.
+
+```
+Prerequisites: Docker running. Ollama if local inference wanted.
+1. bash <(curl -s https://stack.obol.org)           # install obol CLI
+2. obol stack init && obol stack up                 # provision cluster + default agent
+3. obol openclaw dashboard default                  # open agent UI
+4. obol network install ethereum --network mainnet  # sync a chain (optional, heavy)
+5. obol app install <chart> OR use obol-app         # deploy a Dockerfile as a service
+6. obol tunnel login && obol tunnel provision       # public exposure
+7. obol sell http <name> --wallet ... --price ...   # make the service billable
+```
+
+Owning skill: **[run-obol-stack](https://github.com/ObolNetwork/skills/blob/main/skills/run-obol-stack/SKILL.md)** — comprehensive outside-agent guide. It walks install, first boot, CLI surface, network sync, `obol-app` chart usage, tunnel setup, x402 sell-side flow, ERC-8004 registration, debugging, and invariants.
+
+### 5.2 Run a DV with `dv-pod` (Kubernetes production path)
+
+Who: A user with an existing Kubernetes cluster wanting a production DV.
+
+```
+1. helm repo add obol https://obolnetwork.github.io/helm-charts/
+2. helm upgrade --install my-dv-pod obol/dv-pod \
+     --set charon.operatorAddress=0xYOU \
+     --set network=mainnet \
+     --namespace dv-pod --timeout 10m
+3. Retrieve ENR: kubectl get secret charon-enr-private-key -n dv-pod -o jsonpath='{.data.enr}' | base64 -d
+4. Share ENR with other operators OR paste into launchpad.obol.org to create/accept a cluster
+5. Wait for DKG to complete (chart orchestrates the sidecar automatically)
+6. kubectl exec into the charon pod: charon alpha test <suite> --publish
+```
+
+Owning references: `helm-charts/charts/dv-pod/QUICKSTART.md` and `TROUBLESHOOT.md`. Agent skill: `test-a-dv-cluster` for the `charon alpha test` suites.
+
+### 5.3 Run a DV solo with CDVN (Docker Compose)
+
+Who: A user with one machine, wanting the stock path.
+
+```
+1. git clone https://github.com/ObolNetwork/charon-distributed-validator-node
+2. cp .env.sample.hoodi .env   # or .env.sample.mainnet
+3. Edit .env — pick non-default EL/CL/VC clients where possible (network + intra-cluster diversity)
+4. Obtain a .charon/ directory from a completed DKG (via launchpad.obol.org OR create-cluster-invitation skill)
+5. docker compose up -d
+6. docker compose logs -f charon
+7. docker compose exec charon charon alpha test infra --publish    # verify before activation
+```
+
+Owning references: CDVN `CLAUDE.md` (for Claude agents working in the CDVN checkout), in-repo edit skills for add-operators / add-validators / ASDB / etc. Agent skill: `test-a-dv-cluster`.
+
+### 5.4 Run a DV as a group via Launchpad + DKG
+
+Who: 4+ operators coordinating without being deeply technical.
+
+```
+1. Creator visits launchpad.obol.org, picks network, fills cluster params
+2. Creator shares the shareable config_hash link with operators
+3. Each operator connects their wallet, signs acceptance, generates an ENR in-browser
+4. When all n operators have accepted, the Launchpad runs (or coordinates) the DKG
+5. Each operator downloads their .charon/ artifact (lock + key shares + enr key)
+6. Each operator brings up a DV node (CDVN, LCDVN, or dv-pod) with that .charon/
+7. Cluster is verified (charon alpha test) before the 32 ETH deposit per validator
+```
+
+The CLI-equivalent path for a more technical group is `charon create dkg --operator-addresses ...` (for Launchpad acceptance) or `--operator-enrs ...` (for fully CLI coordination), then `charon dkg` on each operator's machine. See the `create-cluster-invitation` skill.
+
+Owning skill: **[create-cluster-invitation](https://github.com/ObolNetwork/skills/blob/main/skills/create-cluster-invitation/SKILL.md)**.
+
+### 5.5 Prepare a DV cluster programmatically
+
+Who: A staking pool, institutional operator, or developer integrating DVs into a larger app.
+
+Path A — preferred: `charon create dkg` via Docker.
+
+```bash
+docker run --rm -v "$(pwd):/opt/charon" obolnetwork/charon:latest \
+  create dkg \
+  --name "Institutional-Cluster-1" \
+  --network mainnet \
+  --num-validators 10 \
+  --fee-recipient-addresses 0x<fee> \
+  --withdrawal-addresses 0x<ovm_or_owr_or_eoa> \
+  --operator-enrs enr:-Iu4Q...,enr:-Iu4Q...,enr:-Iu4Q...,enr:-Iu4Q... \
+  --compounding \
+  --publish
+```
+
+Path B — SDK for integrations:
+
+```typescript
+import { Client } from '@obolnetwork/obol-sdk';
+
+const client = new Client({ chainId: 560048 }, signer);
+await client.acceptObolLatestTermsAndConditions();
+const configHash = await client.createClusterDefinition({ name, operators, validators });
+// Operators call client.acceptClusterDefinition(...) then each runs `charon dkg` locally.
+const lock = await client.getClusterLock(configHash);
+```
+
+If the cluster wants a smart contract at the withdrawal address (OVM or splits), deploy that first — see 5.6.
+
+Owning skill: **[create-cluster-invitation](https://github.com/ObolNetwork/skills/blob/main/skills/create-cluster-invitation/SKILL.md)**.
+
+### 5.6 Deploy an OVM (smart-contract withdrawal target)
+
+Who: A user who wants reward splitting, role-gated operations, or on-chain EIP-7002/7251 flows bound to their cluster.
+
+```
+1. git clone https://github.com/ObolNetwork/obol-splits
+2. export PRIVATE_KEY=0x...
+3. .claude/skills/deploy-obol-ovm/scripts/deploy-ovm.sh <owner> <beneficiary> <reward> 16 hoodi
+4. Capture the OVM address from the event logs
+5. .claude/skills/deploy-obol-ovm/scripts/grant-roles.sh <ovm> <operator> 33 hoodi
+6. Use the OVM address as --withdrawal-addresses when running `charon create dkg`
+```
+
+Owning skill: **[deploy-obol-ovm](https://github.com/ObolNetwork/obol-splits/blob/main/.claude/skills/deploy-obol-ovm/SKILL.md)**. Roles: `WITHDRAWAL_ROLE=1`, `CONSOLIDATION_ROLE=2`, `SET_BENEFICIARY_ROLE=4`, `RECOVER_FUNDS_ROLE=8`, `SET_REWARD_ROLE=16`, `DEPOSIT_ROLE=32`, `ALL=63`.
+
+### 5.7 Run a Lido Simple DVT DV (LCDVN variant)
+
+Who: A Lido Simple DVT operator.
+
+```
+1. git clone https://github.com/ObolNetwork/lido-charon-distributed-validator-node
+2. cp .env.sample.hoodi .env   # or mainnet
+3. Fill in mandatory Lido env vars:
+     VE_OPERATOR_ID                — from operators.lido.fi
+     VE_EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST — your SAFE manager address(es)
+     VE_STAKING_MODULE_ID=2        — pre-set for Simple DVT, do not change
+     VE_LOCATOR_ADDRESS, VE_ORACLE_ADDRESSES_ALLOWLIST, VE_EASY_TRACK_ADDRESS — pre-populated per network
+4. Drop .charon/ from completed DKG
+5. docker compose up -d
+6. docker compose exec charon charon alpha test --publish
+```
+
+The `validator-ejector` service is the Lido-specific piece — it watches the CL/EL for signed exit messages targeting your operator and forwards them to Charon. Without it, a Lido SDVT DV risks slashing or socialised losses for ignoring exit signals.
+
+---
+
+## 6. Charon reference essentials
+
+**Binary / image**: `charon` (Go) or `obolnetwork/charon:latest` on Docker Hub.
+
+### Top-level commands
+
+- `charon create dkg` — create a cluster-definition invitation. Full flag surface via `charon create dkg --help`.
+- `charon create enr` — generate an ENR + private key (use before `create dkg --operator-enrs`).
+- `charon create cluster` — solo / local-testing shortcut; generates all key shares on one machine. **Not for real clusters.**
+- `charon dkg` — run the distributed key generation ceremony. All operators run this simultaneously after accepting a cluster-definition.
+- `charon run` — run the DV middleware at runtime (wrapped by CDVN / LCDVN / dv-pod; rarely invoked directly).
+- `charon alpha test` — health test suites. See section 7.
+- `charon alpha add-validators` — grow an existing cluster (experimental, Charon v1.6+). Not yet recommended for mainnet.
+- `charon version` — print version. Always include output when filing a bug.
+- `charon combine` — combine key shares for migration / recovery.
+- `charon exit` — generate exit messages for validators.
+
+### Critical flags to encourage
+
+- `--publish` on `create dkg` — publishes the cluster-definition to [api.obol.tech](https://api.obol.tech) so operators can fetch it by config hash.
+- `--publish` on `dkg` — publishes the cluster-lock after ceremony.
+- `--publish` on `alpha test` — signs results with the ENR key; correlates test results to the live ENR when run inside a running Charon.
+- `--network` — required on most commands. `mainnet | sepolia | hoodi`.
+- `--compounding` on `create dkg` — 0x02 withdrawal credentials (EIP-7251). Recommended for new clusters.
+
+### Default ports
+
+- **3600** — Validator API (what the local VC talks to)
+- **3610** — P2P TCP (between Charon peers)
+- **3620** — Metrics (Prometheus scrape target)
+
+### Config artefacts
+
+- **`.charon/cluster-definition.json`** — the invitation. Public (publish it). Contains creator, operators, validators, withdrawal + fee recipients, threshold, network, config hash.
+- **`.charon/cluster-lock.json`** — the ceremony output. Public and identical across operators. Contains deposit data, signed aggregates, validator pubkeys. Publish it; back it up.
+- **`.charon/validator_keys/keystore-*.json`** + `.txt` — the operator's BLS key shares. **Secret, per-operator, must never be shared.** Each operator has a different keyshare.
+- **`.charon/charon-enr-private-key`** — the Charon ENR signing key. **Secret, per-operator.** Lose it and the operator's network identity is gone.
+- **`.charon/deposit-data.json`** — deposit data for the 32 ETH per validator activation. Public.
+
+### ENR (Ethereum Node Record)
+
+An ENR is a signed record that identifies a node and its network endpoint. For a Charon ENR-mode DKG setup, each operator generates their own ENR with `charon create enr` and shares the public ENR string with the creator. The corresponding private key stays on the operator's machine.
+
+### Version discipline
+
+Charon is actively developed. Pin to a release tag (e.g. `CHARON_VERSION=v1.9.3`) rather than `latest`. Across a cluster, all operators should run the same major/minor version — mixing major versions has caused DKG and consensus failures historically. When upgrading, coordinate with co-operators.
+
+---
+
+## 7. Testing your cluster — `charon alpha test`
+
+After any cluster bring-up or significant config change, run `charon alpha test` before depositing / relying on the cluster. Six subcommands:
+
+| Suite | Checks | Prerequisites | First-use note |
+|-------|--------|---------------|----------------|
+| `infra` | Local CPU, memory, disk I/O, network, clock | **None** | The only suite that works pre-cluster-join. Solo users testing their own machine should start here. |
+| `peers` | P2P connectivity to cluster peers + relays; RTT; ENR validity | Completed DKG + other operators' Charons reachable | Fails if cluster-mates haven't brought up their nodes. |
+| `beacon` | Beacon node endpoint latency, sync, API support | Running BN URL | Teku BN has ~170ms median `attestation_data` latency and that's normal. |
+| `validator` | VC API reachability | Running VC pointed at Charon's 3600 | Common failure: VC pointed at BN port instead of Charon. |
+| `mev` | MEV relay reachability + API | MEV relays configured | Skip with `MEV=mev-none`. |
+| `all` | Every suite above | All prereqs met | Slow — one bad dependency fails the whole run. |
+
+### Preferred execution pattern
+
+`docker exec` / `kubectl exec` into the running Charon + `--publish`:
+
+```bash
+# CDVN / LCDVN
+docker compose exec charon charon alpha test <suite> --publish
+
+# dv-pod / Stack
+kubectl exec -n <ns> <charon-pod> -c charon -- charon alpha test <suite> --publish
+```
+
+`--publish` inside the container uses the real ENR signing key; outside / without the key, Charon silently generates a throwaway ENR and the published result isn't correlated to the production node. **Always `--publish` inside a running Charon.** The cost is near-zero; the value is ENR correlation plus fleet-level health visibility for the Obol team.
+
+Verdicts per test: `Good` / `Avg` / `Poor` (measurements), `OK` / `Fail` (booleans), `Skip` (prereqs missing). Category scores: `A` / `B` / `C`. Each `Poor` / `Fail` carries a `Suggestion` string — **surface it verbatim** to the user, it's written by the Charon team.
+
+Owning skill: **[test-a-dv-cluster](https://github.com/ObolNetwork/skills/blob/main/skills/test-a-dv-cluster/SKILL.md)**.
+
+---
+
+## 8. SDK reference essentials
+
+### Package
+
+- **npm**: `@obolnetwork/obol-sdk`
+- **Repo**: [github.com/ObolNetwork/obol-sdk](https://github.com/ObolNetwork/obol-sdk)
+- **Language**: TypeScript. Targets Node 16+, browser (ESM), and CommonJS.
+- **Examples**: [github.com/ObolNetwork/obol-sdk-examples](https://github.com/ObolNetwork/obol-sdk-examples)
+
+### Client surface
+
+```typescript
+import { Client, validateClusterLock } from '@obolnetwork/obol-sdk';
+
+const client = new Client(
+  { chainId: 1 /* mainnet */, baseUrl: 'https://api.obol.tech' },
+  signer,      // ethers Wallet or JsonRpcSigner — required for write ops
+  provider?    // ethers Provider — required for on-chain reads
+);
+```
+
+**Sign-required methods**:
+
+- `acceptObolLatestTermsAndConditions()` — T&C acceptance, prerequisite for most writes.
+- `createClusterDefinition(ClusterPayload)` → returns `config_hash`.
+- `acceptClusterDefinition(OperatorPayload, configHash)` → operator joining a cluster.
+- `createObolRewardsSplit(...)`, `createObolTotalSplit(...)` — legacy splits. Only on mainnet and hoodi.
+- `client.splits.createValidatorManagerAndRewardsSplit(...)` — OVM + SplitV2.
+- `client.splits.createValidatorManagerAndTotalSplit(...)` — OVM + SplitV2 (total).
+- `client.splits.requestWithdrawal(...)`, `client.splits.deposit(...)`.
+- `client.eoa.requestWithdrawal(...)`, `client.eoa.deposit(...)` — direct EOA flows.
+- `client.incentives.claimIncentives(...)`.
+
+**Read-only methods**:
+
+- `getClusterDefinition(configHash)`, `getClusterLock(configHash)`, `getClusterLockByHash(lockHash)`.
+- `client.incentives.getIncentivesByAddress(address)`, `client.incentives.isClaimed(...)`.
+- `client.splits.getOWRTranches(address)`.
+- `validateClusterLock(lock)` — standalone, cryptographic verification of a cluster-lock.
+
+**Exit module** (`client.exit`):
+
+- `verifyPartialExitSignature(...)`, `verifyExitPayloadSignature(...)`, `validateExitBlobs(...)`, `recombineExitBlobs(...)`.
+
+### Signing patterns
+
+- **EOA**: any ethers `Wallet` or `JsonRpcSigner`. Signs EIP-712 typed data for authentication.
+- **Safe** (Gnosis Safe): supported via `@safe-global/protocol-kit`. SDK auto-detects contract addresses and routes through Safe signature validation. RPC URL per network required (`RPC_MAINNET`, `RPC_HOODI`, etc.).
+
+### Supported chains
+
+Verify the current list via the SDK's `FORK_MAPPING`. As of SDK v2.11.10:
+
+- `1` mainnet — full support incl. splitter deployment.
+- `560048` hoodi — full support incl. splitter deployment. **Default chain.**
+- `11155111` sepolia — read + write for cluster ops; splitter deploy not supported.
+- `100` gnosis — legacy, still referenced.
+
+### Canonical code snippets
+
+**Create a cluster-definition** (creator side):
+
+```typescript
+import { Client } from '@obolnetwork/obol-sdk';
+import { Wallet } from 'ethers';
+
+const signer = new Wallet(process.env.PRIVATE_KEY!);
+const client = new Client({ chainId: 560048 }, signer);
+
+await client.acceptObolLatestTermsAndConditions();
+
+const configHash = await client.createClusterDefinition({
+  name: 'my-cluster',
+  operators: [
+    { address: '0xOp1...' },
+    { address: '0xOp2...' },
+    { address: '0xOp3...' },
+    { address: '0xOp4...' },
+  ],
+  validators: [
+    {
+      fee_recipient_address: '0xFeeRecipient...',
+      withdrawal_address: '0xWithdrawal...',   // plain EOA or OVM contract address
+    },
+  ],
+});
+console.log(configHash);   // share with operators
+```
+
+**Accept a cluster-definition** (operator side):
+
+```typescript
+// Each operator runs this with their own wallet.
+await client.acceptObolLatestTermsAndConditions();
+await client.acceptClusterDefinition({ address: myOperatorAddress }, configHash);
+// Then they run `charon dkg` on their own machine to participate in the ceremony.
+```
+
+**Fetch a cluster-lock** (after DKG):
+
+```typescript
+const lock = await client.getClusterLock(configHash);
+// lock contains distributed_validators[], signature_aggregate, lock_hash, etc.
+```
+
+### SDK footguns
+
+- **T&C**: `createClusterDefinition` fails silently if `acceptObolLatestTermsAndConditions()` hasn't been called for the creator's wallet first. Always call it first.
+- **Signer + provider**: splitter deployment requires the signer to have a `.provider` attached (or a provider passed to the `Client` constructor). Without one, throws "Signer is required".
+- **Chain-specific**: splitter / OVM deploy methods only work on mainnet and hoodi. Other chains throw `UnsupportedChainError`.
+- **Duplicate cluster definitions** throw `ConflictError` on retry. Handle the case.
+
+---
+
+## 9. Smart contracts
+
+All in [github.com/ObolNetwork/obol-splits](https://github.com/ObolNetwork/obol-splits). Foundry-based.
+
+### Obol Validator Manager (OVM) — current-generation
+
+Flexible contract for a validator's withdrawal address. Handles:
+
+- Principal + reward distribution. Up to `amountOfPrincipalStake` goes to the principal recipient on distribute; the rest goes to the reward recipient.
+- EIP-7002 withdrawals — `requestWithdrawal` emits on-chain withdrawal requests that the EL can process.
+- EIP-7251 consolidations — `consolidate` merges stake from a source validator into a destination validator.
+- Deposits — `DEPOSIT_ROLE` holders can call `deposit` with deposit-data JSON.
+- Role-gated operations via a bitwise flag system.
+
+**Roles**:
+
+| Role | Value | Purpose |
+|------|-------|---------|
+| `WITHDRAWAL_ROLE` | 1 | Request validator withdrawals (EIP-7002) |
+| `CONSOLIDATION_ROLE` | 2 | Consolidate validator stakes (EIP-7251) |
+| `SET_BENEFICIARY_ROLE` | 4 | Change principal recipient |
+| `RECOVER_FUNDS_ROLE` | 8 | Recover stuck funds |
+| `SET_REWARD_ROLE` | 16 | Change reward recipient |
+| `DEPOSIT_ROLE` | 32 | Make validator deposits |
+| `ALL_ROLES` | 63 | All of the above |
+
+**Factory addresses**:
+
+| Network | Factory address | Deploy block |
+|---------|-----------------|---------------|
+| mainnet | `0x2c26B5A373294CaccBd3DE817D9B7C6aea7De584` | 23919948 |
+| hoodi | `0x5754C8665B7e7BF15E83fCdF6d9636684B782b12` | 1735335 |
+| sepolia | `0xF32F8B563d8369d40C45D5d667C2B26937F2A3d3` | 9159573 |
+
+Owning skill: **[deploy-obol-ovm](https://github.com/ObolNetwork/obol-splits/blob/main/.claude/skills/deploy-obol-ovm/SKILL.md)** — has scripts for deploy / query / grant-roles / revoke-roles / distribute / sweep / withdraw / consolidate / deposit / set-principal-stake / set-beneficiary / set-reward-recipient.
+
+### Legacy: OptimisticWithdrawalRecipient (OWR) + 0xSplits
+
+Two-tranche pattern. Principal recipient gets up to a threshold; surplus goes to reward recipient via a 0xSplits split. Minimum 16 ETH balance before distribution. Still in use by pre-OVM clusters and some Lido CSM setups. For new deployments, prefer OVM.
+
+### ObolLidoSplit
+
+Wraps stETH → wstETH before splitting. Used for Lido CSM integrations where rewards arrive as stETH (rebasing). Keeps the split math clean by moving to a non-rebasing token.
+
+### Warehouse
+
+Fund storage contract used by 0xSplits' V2 splits.
+
+### Audits
+
+- [Quantstamp audit](https://obol.org/charon_quantstamp_assessment.pdf) — Charon.
+- [Sigma Prime audit](https://obol.org/charon_sigma_prime_assessment.pdf) — Charon.
+- [Charon threat model](https://obol.org/charon_threat_model.pdf).
+- Obol-splits contracts have their own audits listed in the [security overview](https://docs.obol.org/next/advanced-and-troubleshooting/security/overview#list-of-security-audits-and-assessments).
+
+---
+
+## 10. Best practices
+
+### Hardware
+
+- **DV node**: 16GB+ RAM, 1TB+ NVMe for mainnet full node, 8+ cores, 1 Gbps network.
+- **Stack**: 16GB+ RAM baseline; add chain-specific disk (mainnet full node: ~1TB execution + ~200GB consensus; testnets: ~200GB; L2s vary).
+- **Hoodi / sepolia testnets**: ~200GB total is enough.
+
+### Networking
+
+- Open TCP 3610 (Charon p2p) inbound to each operator's machine.
+- Tunnel operators often use a relay to avoid NAT — see [terraform-charon-relay](https://github.com/ObolNetwork/terraform-charon-relay) or the Obol-hosted relay.
+- Keep the Charon validator API (port 3600) firewalled to localhost or the VC container only — never expose publicly.
+
+### Client diversity
+
+- **Network-level**: don't run the supermajority clients (Geth + Lighthouse) unless you have a reason. Every operator on non-default EL/CL helps Ethereum's overall resilience.
+- **Intra-cluster**: within a 4-node cluster, if every operator runs the same EL/CL/VC, a single client bug takes the whole cluster down. Coordinate with co-operators to pick diverse combinations.
+
+### Latency
+
+- Cluster peers within the same continent is ideal; cross-continent is fine but adds consensus round latency.
+- BN `attestation_data` latency matters most. Lighthouse / Prysm / Nimbus / Lodestar / Grandine are all ~5–10ms p50. Teku is ~170ms — known slow, still usable for most clusters.
+- Target consensus duration p99 <2s for attester duties.
+
+### Monitoring
+
+- **Live cluster diagnostics (hosted)**: [obol-monitoring](https://github.com/ObolNetwork/skills/blob/main/skills/obol-monitoring/SKILL.md) skill — Obol's hosted Grafana with Prometheus + Loki.
+- **Local monitoring**: shipped with CDVN / LCDVN (Prometheus + Grafana + Loki in-stack). A `local-monitoring` skill is in development.
+- Set `PROM_REMOTE_WRITE_TOKEN` and `CHARON_LOKI_ADDRESSES` in your `.env` to push metrics + logs to Obol's hosted stack for fleet visibility.
+- Alert on `app_monitoring_readyz != 1` for any peer in the cluster.
+
+### Rotation
+
+- Back up `.charon/cluster-lock.json`, `.charon/validator_keys/`, and `.charon/charon-enr-private-key` externally. Losing any of these is very painful.
+- Use the edit skills in CDVN for `replace-operator`, `recreate-private-keys`, `add-validators`, `remove-operators`, `export-asdb` / `import-asdb`.
+
+### MEV
+
+- Use MEV-Boost or Commit-Boost. Don't run without MEV on mainnet if you care about validator returns.
+- Configure multiple relays for redundancy.
+- Monitor relay health — a stuck relay silently erodes rewards.
+
+### Deposit safety
+
+- **Never deposit 32 ETH without verifying the cluster.** Run `charon alpha test` suites, inspect `cluster-definition.json` and `cluster-lock.json` by hand, confirm the withdrawal address is what you expect (especially if it's a smart contract), confirm operator set matches your expectations. A bad deposit is weeks of queue time to exit and redeposit.
+
+Canonical reference: [Deployment best practices](https://docs.obol.org/run-a-dv/prepare/deployment-best-practices).
+
+---
+
+## 11. Troubleshooting catalog
+
+Common failures across the stack, grouped.
+
+### DKG / cluster creation
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `charon create dkg` fails "network not specified" | Missing `--network` or `--testnet-fork-version` | Pass `--network mainnet\|sepolia\|hoodi` |
+| `charon dkg` hangs at "waiting for peers" | Not all operators online, or P2P blocked | Coordinate simultaneous start; check operator firewalls on port 3610 |
+| `charon dkg` fails mid-ceremony with signature error | Version mismatch between operators | Pin all operators to same Charon major/minor version |
+| SDK `createClusterDefinition` fails silently | T&C not accepted for creator wallet | Call `acceptObolLatestTermsAndConditions()` first |
+| Address-mode operators can't find the cluster | `--publish` omitted from `create dkg` | Always publish in address-mode |
+
+### Runtime / consensus
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `app_monitoring_readyz = 2` | BN is down | Restart / check BN logs |
+| `app_monitoring_readyz = 3` | BN is syncing | Wait; use checkpoint sync to shorten |
+| `app_monitoring_readyz = 4` | Not enough peers | Check P2P; relay URLs; firewall port 3610 |
+| `app_monitoring_readyz = 5` | VC not connected | VC must point at Charon port 3600 (not BN) |
+| `app_monitoring_readyz = 7` | BN has zero peers | BN is network-isolated; check BN P2P config |
+| `app_monitoring_readyz = 8` | BN is >320 slots behind | BN has resource issues or needs time |
+| High attester timeout rate | Slow BN (often Teku) or P2P latency | Check BN client profile; check relay vs direct P2P |
+| `no_consensus` failure reason | QBFT didn't decide | Check peer connectivity; may be one slow/offline peer |
+| `no_local_vc_signature` | VC not signing | Check VC logs, key loading, and that it's pointed at Charon 3600 |
+
+### Stack
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `obol stack up` hangs at image pulls | Docker out of disk or rate limits | `docker system prune`; verify Docker Desktop disk allocation |
+| Pods `CrashLoopBackOff` | Missing config / secret / bind-mount | `obol kubectl describe pod`; read events |
+| Can't reach `http://obol.stack/` | Local DNS not resolving | Check `/etc/hosts` has `obol.stack 127.0.0.1`; on macOS, `sudo killall -HUP mDNSResponder` |
+| LiteLLM returns empty responses | Host Ollama not reachable from cluster | Verify with `obol kubectl run` + curl to `ollama.llm.svc.cluster.local:11434/api/tags` |
+| ServiceOffer stuck | Reconciliation stalled at a stage | `obol kubectl describe serviceoffer` — see which stage is stuck (ModelReady / UpstreamHealthy / PaymentGateReady / RoutePublished / Registered) |
+| Tunnel not published | Cloudflare auth expired | `obol tunnel login` again; `obol tunnel restart` |
+
+### OVM / contracts
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `check-is-ovm.sh` says "not an OVM" | RPC failure or actual wrong address | Script retries 3×; on all failures, ask user for custom RPC (`export RPC_URL=...`) |
+| Write ops revert "execution reverted" | Missing role | Use `query-roles.sh` to verify target has needed role bit set |
+| `deploy-ovm.sh` fails | `PRIVATE_KEY` unset | `export PRIVATE_KEY=0x...` |
+
+Canonical reference: [docs.obol.org errors page](https://docs.obol.org/docs/faq/errors).
+
+---
+
+## 12. Appendix: repo inventory
+
+Non-ignored Obol repos with agent-readiness status. Ignored repos (archived / deprecated / internal) are omitted — see "Products to ignore" in section 2.
+
+| Repo | Purpose | Agent readiness |
+|------|---------|-----------------|
+| [charon](https://github.com/ObolNetwork/charon) | DV middleware (Go) | `CLAUDE.md` present |
+| [obol-stack](https://github.com/ObolNetwork/obol-stack) | Agent harness CLI (Go) | `CLAUDE.md` present; `.claude/skills/obol-stack-dev/` for contributors |
+| [obol-sdk](https://github.com/ObolNetwork/obol-sdk) | TypeScript SDK | `CLAUDE.md` present — comprehensive; covers contributor + consumer |
+| [obol-sdk-examples](https://github.com/ObolNetwork/obol-sdk-examples) | SDK worked examples | Consumer-facing (TS / JS / Lido) |
+| [obol-splits](https://github.com/ObolNetwork/obol-splits) | Solidity contracts (OVM, OWR, splits) | `.claude/skills/deploy-obol-ovm/` for current-gen |
+| [charon-distributed-validator-node](https://github.com/ObolNetwork/charon-distributed-validator-node) | Docker Compose DV launcher | `CLAUDE.md` present; 7 in-repo cluster-edit skills |
+| [lido-charon-distributed-validator-node](https://github.com/ObolNetwork/lido-charon-distributed-validator-node) | Lido Simple DVT variant | `CLAUDE.md` present |
+| [helm-charts](https://github.com/ObolNetwork/helm-charts) | K8s Helm charts (`dv-pod`, `obol-app`, etc.) | `CLAUDE.md` present; in-chart QUICKSTART + TROUBLESHOOT |
+| [skills](https://github.com/ObolNetwork/skills) | Global agent skills | `run-obol-stack`, `test-a-dv-cluster`, `create-cluster-invitation`, `obol-monitoring` |
+| [charon-dkg-sidecar](https://github.com/ObolNetwork/charon-dkg-sidecar) | K8s sidecar for `dv-pod` DKG | `CLAUDE.md` present |
+| [distributed-validator-specs](https://github.com/ObolNetwork/distributed-validator-specs) | Protocol spec | `CLAUDE.md` present |
+| [obol-gitbook](https://github.com/ObolNetwork/obol-gitbook) | Docs source (powers docs.obol.org) | `CLAUDE.md` present |
+| [obol-api](https://github.com/ObolNetwork/obol-api) | NestJS backend | Private repo; `llms.txt` at [api.obol.tech/llms.txt](https://api.obol.tech/llms.txt) |
+| [dv-launchpad](https://github.com/ObolNetwork/dv-launchpad) | Hosted UI | Private repo; `llms.txt` at [launchpad.obol.org/llms.txt](https://launchpad.obol.org/llms.txt) |
+| [remote-signer](https://github.com/ObolNetwork/remote-signer) | Remote signer for agents' wallets | `CLAUDE.md` present |
+| [obol-security](https://github.com/ObolNetwork/obol-security) | Security policy | Public policy repo |
+| [obol-ansible](https://github.com/ObolNetwork/obol-ansible) | IaC for DV ops | On-request launcher |
+| [terraform-charon-relay](https://github.com/ObolNetwork/terraform-charon-relay) | Terraform for Charon relay | Utility |
+| [terraform-grafana-dashboards](https://github.com/ObolNetwork/terraform-grafana-dashboards) | Terraform for Grafana | Utility |
+
+### Agent skills inventory
+
+Four global skills + one per-product skill:
+
+| Skill | Location | One-line purpose |
+|-------|----------|-------------------|
+| `run-obol-stack` | global `skills/skills/run-obol-stack/` | Install / boot / operate / productise the Stack (outside-agent helping a human). |
+| `create-cluster-invitation` | global `skills/skills/create-cluster-invitation/` | Create a DV cluster-definition via `charon create dkg` (preferred) or SDK. |
+| `test-a-dv-cluster` | global `skills/skills/test-a-dv-cluster/` | `charon alpha test` wrapper with `--publish` + ENR correlation. |
+| `obol-monitoring` | global `skills/skills/obol-monitoring/` | Live DV diagnostics via Obol's hosted Grafana. |
+| `deploy-obol-ovm` | `obol-splits/.claude/skills/deploy-obol-ovm/` | OVM factory deploy, roles, distribute, sweep, withdraw, consolidate, deposit. |
+| CDVN edit skills (7) | `charon-distributed-validator-node/.claude/skills/` | add/remove operators, add validators, export/import ASDB, recreate private keys, replace operator. |
+
+**Backlog**:
+
+- `local-monitoring` — CDVN/LCDVN-local Grafana/Prometheus querying. Waits on another dev's dashboard refresh.
+- LCDVN skill set — will mirror CDVN's once CDVN's is stable.
+
+---
+
+## Canonical index
+
+If you're an agent and you've just loaded this file, you have what you need for 90% of Obol questions. For the remaining 10%:
+
+- **Live endpoint surface**: [api.obol.tech/docs-json](https://api.obol.tech/docs-json) — OpenAPI, always current.
+- **Live CLI surface**: `charon <verb> --help` or [charon-cli-reference](https://docs.obol.org/docs/charon/charon-cli-reference).
+- **Live skill surface** (inside the Stack): `obol openclaw skills list <instance>` — run this in a terminal connected to the user's Stack.
+- **Human docs**: [docs.obol.org](https://docs.obol.org/) with an [agent index](https://docs.obol.org/llms.txt).
+- **Product pages**: [obol.org](https://obol.org), [obol.org/stack](https://obol.org/stack).
+- **Errors / troubleshooting canon**: [docs.obol.org/docs/faq/errors](https://docs.obol.org/docs/faq/errors).
+
+And finally: **be honest with users about uncertainty.** If you're helping them set up a DV and something in this file contradicts what their repo's `CLAUDE.md` says, trust the repo — it's closer to the code. If you're about to recommend a 32-ETH deposit, tell them to verify the cluster shape before they send. Obol's mission is to make this infrastructure safer and more resilient — an agent that skips a safety check isn't helping that mission.

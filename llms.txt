@@ -1,0 +1,113 @@
+# Obol
+
+> Obol is a collective securing and powering Ethereum. Secure via Distributed Validators (DVs) — Charon-coordinated multi-operator validators that reduce slashing risk and correlated failures. Power via the Obol Stack — an AI-agent harness for running blockchain infrastructure, exposing services to the internet, and charging for them with x402 micropayments. Start here if you're an agent working with anything Obol.
+
+## About Obol
+
+- [Obol home](https://obol.org): product pages and landing.
+- [Documentation](https://docs.obol.org/): concepts, how-to, reference.
+- [Agent index for docs](https://docs.obol.org/llms.txt): auto-generated from GitBook.
+- [GitHub org](https://github.com/ObolNetwork): all Obol repos (public + some private).
+- [Whitepaper](https://obol.org/Obol_Whitepaper_MiCA.pdf): foundational design rationale, MiCA-friendly edition.
+- [Status page](https://status.obol.org/): live service health.
+- [Public data dashboard](https://grafana.gcp.obol.tech/d/cached/obol-ecosystem-dashboard-v2): Obol ecosystem stats.
+
+## Obol Stack & Agents (flagship)
+
+- [Obol Stack home](https://obol.org/stack): product overview for the agent harness.
+- [Stack documentation](https://docs.obol.org/obol-stack/obol-stack): concepts + walkthrough.
+- [obol-stack repo](https://github.com/ObolNetwork/obol-stack): Go CLI + installer. `bash <(curl -s https://stack.obol.org)` to install.
+- [run-obol-stack skill](https://github.com/ObolNetwork/skills/blob/main/skills/run-obol-stack/SKILL.md): outside-agent guide for installing, operating, and productising the Stack.
+- [OpenClaw](https://openclaw.ai): the default Obol Agent runtime inside the Stack (other runtimes expected).
+- [x402 protocol](https://www.x402.org/): HTTP 402 micropayments — the payment rail for Stack-hosted services.
+- [obol-app Helm chart](https://github.com/ObolNetwork/helm-charts/tree/main/charts/obol-app): general-purpose "run any Dockerfile" mechanism for Stack apps.
+
+## Agent skills
+
+- [Global skills repo](https://github.com/ObolNetwork/skills): `skills/skills/<name>/SKILL.md` for skills that don't require cloning a product repo.
+- [obol.org/skill.md](https://obol.org/skill.md): router skill — start here to dispatch to the right nested skill.
+- [run-obol-stack](https://github.com/ObolNetwork/skills/blob/main/skills/run-obol-stack/SKILL.md): install, boot, and productise the Obol Stack.
+- [create-cluster-invitation](https://github.com/ObolNetwork/skills/blob/main/skills/create-cluster-invitation/SKILL.md): create a DV cluster-definition via `charon create dkg` (preferred) or the SDK.
+- [test-a-dv-cluster](https://github.com/ObolNetwork/skills/blob/main/skills/test-a-dv-cluster/SKILL.md): `charon alpha test` wrapper (infra / peers / beacon / validator / mev / all).
+- [obol-monitoring](https://github.com/ObolNetwork/skills/blob/main/skills/obol-monitoring/SKILL.md): diagnose live DV cluster issues via Obol's hosted Grafana (Prometheus + Loki).
+- [deploy-obol-ovm](https://github.com/ObolNetwork/obol-splits/blob/main/.claude/skills/deploy-obol-ovm/SKILL.md): deploy and manage Obol Validator Manager smart contracts. Lives in `obol-splits`; clone that repo.
+
+## Run a Distributed Validator (ordered by preference)
+
+- **Preferred (Kubernetes, production)**: [dv-pod Helm chart](https://github.com/ObolNetwork/helm-charts/tree/main/charts/dv-pod) in `helm-charts`. Single-pod DV with automatic DKG orchestration. See the chart's `QUICKSTART.md`.
+- **Preferred (Kubernetes + agent harness)**: [Obol Stack](https://github.com/ObolNetwork/obol-stack) with `dv-pod` alongside agents.
+- **Stock (Docker Compose)**: [charon-distributed-validator-node](https://github.com/ObolNetwork/charon-distributed-validator-node) (CDVN). The most common starting point. Has its own `CLAUDE.md` and seven in-repo cluster-edit skills.
+- **Lido Simple DVT variant**: [lido-charon-distributed-validator-node](https://github.com/ObolNetwork/lido-charon-distributed-validator-node) (LCDVN). Same shape as CDVN plus Lido `validator-ejector` and oracle config.
+- **Third-party appliance**: [DappNode Obol package](https://github.com/dappnode/DAppNodePackage-obol-generic).
+- **Third-party UI**: [Stereum](https://stereum.net/).
+- **Ops automation**: [obol-ansible](https://github.com/ObolNetwork/obol-ansible) — on request.
+- **Legacy / completeness**: [Sedge](https://github.com/ObolNetwork/sedge/blob/develop/docs/docs/quickstart/charon.mdx).
+
+## Canonical docs
+
+- [docs.obol.org/llms.txt](https://docs.obol.org/llms.txt): auto-generated index of the full docs site.
+- [Key concepts](https://docs.obol.org/docs/int/key-concepts): the mental model.
+- [Charon intro](https://docs.obol.org/learn/charon/intro): what Charon is and how QBFT + threshold BLS work.
+- [Charon CLI reference](https://docs.obol.org/docs/charon/charon-cli-reference): flag-accurate command surface.
+- [DKG ceremony](https://docs.obol.org/docs/start/dkg): the invitation + distributed key generation flow.
+- [`charon alpha test`](https://docs.obol.org/docs/charon/charon-cli-reference#alpha-test): cluster-health test suites.
+- [Activate validators](https://docs.obol.org/docs/next/start/activate): post-DKG deposit flow.
+- [Deployment best practices](https://docs.obol.org/run-a-dv/prepare/deployment-best-practices): hardware, networking, monitoring, backups.
+- [Errors page](https://docs.obol.org/docs/faq/errors): flattened error → cause mapping.
+- [FAQ](https://docs.obol.org/docs/faq): common questions.
+
+## SDK & CLI
+
+- [Obol SDK on npm](https://www.npmjs.com/package/@obolnetwork/obol-sdk) (`@obolnetwork/obol-sdk`): TypeScript client — the preferred programmatic client for api.obol.tech.
+- [obol-sdk repo](https://github.com/ObolNetwork/obol-sdk): canonical source.
+- [obol-sdk-examples](https://github.com/ObolNetwork/obol-sdk-examples): working TS / JS / Lido code.
+- [Charon CLI](https://docs.obol.org/docs/charon/charon-cli-reference): Go binary `charon` (Docker image: `obolnetwork/charon:latest`) — the authoritative creation tool; drives DKG, runs nodes, runs tests.
+- [DV Launchpad](https://launchpad.obol.org): browser UI for DV creation + activation. Per-network deployments exist.
+- [launchpad.obol.org/llms.txt](https://launchpad.obol.org/llms.txt): agent file for the Launchpad.
+- [api.obol.tech](https://api.obol.tech): REST + GraphQL backend consumed by SDK, Launchpad, and Charon (`--publish`).
+- [api.obol.tech/llms.txt](https://api.obol.tech/llms.txt): agent file for the API.
+- [api.obol.tech/docs-json](https://api.obol.tech/docs-json): OpenAPI spec — always source-of-truth over any endpoint list.
+
+## Smart contracts
+
+- [obol-splits repo](https://github.com/ObolNetwork/obol-splits): Solidity source for OVM, OWR, SplitMain, ObolLidoSplit, Warehouse.
+- [Obol Validator Manager (OVM)](https://docs.obol.org/docs/advanced/obol-validator-manager): current-generation reward / principal splitting + EIP-7002 withdrawals + EIP-7251 consolidations.
+- [Legacy OWR + 0xSplits](https://docs.obol.org/docs/advanced/splitter-manual-config): older two-tranche withdrawal pattern; only for pre-OVM deployments.
+- [deploy-obol-ovm skill](https://github.com/ObolNetwork/obol-splits/blob/main/.claude/skills/deploy-obol-ovm/SKILL.md): factory deploy, role grants, distribute, sweep, withdraw, consolidate, deposit. Default for new clusters.
+- [Quantstamp audit](https://obol.org/charon_quantstamp_assessment.pdf): Charon security review.
+- [Sigma Prime audit](https://obol.org/charon_sigma_prime_assessment.pdf): second Charon audit.
+- [Threat model](https://obol.org/charon_threat_model.pdf): Charon adversarial analysis.
+
+## Specs & research
+
+- [Distributed Validator Specs](https://github.com/ObolNetwork/distributed-validator-specs): protocol-level spec.
+- [Pluto](https://github.com/NethermindEth/pluto): Nethermind's second DV implementation — interoperates with Charon via the spec. Still WIP; do not pick in production.
+- [Whitepaper (MiCA edition)](https://obol.org/Obol_Whitepaper_MiCA.pdf): design rationale.
+- [Athena performance report](https://obol.org/athena_performance_report.pdf): independent performance analysis.
+- [Miga Labs performance report](https://obol.org/miga_labs_performance_report.pdf): additional independent benchmarks.
+- [Built for Insto](https://obol.org/Built_for_Insto.pdf): institutional deployment reference.
+- [EtherFi case study](https://obol.org/EtherFi_case_study.pdf).
+- [Lido SDVT case study](https://obol.org/Lido_SDVT_case_study.pdf).
+
+## Security & best practices
+
+- [Deployment best practices](https://docs.obol.org/docs/advanced/deployment-best-practices): canonical pre-deposit checklist.
+- [Security overview](https://docs.obol.org/next/advanced-and-troubleshooting/security/overview): top-level security posture + audit list.
+- [obol-security repo](https://github.com/ObolNetwork/obol-security): public policy and disclosure process.
+- [Threat model](https://obol.org/charon_threat_model.pdf): Charon adversarial analysis.
+- [Bug bounty](https://docs.obol.org/next/advanced-and-troubleshooting/security/bug-bounty): program terms + scope.
+- [Key splitting migration guide](https://obol.org/Key_Splitting_Migration_Guide.pdf): rotating existing validators into a DV.
+
+## Common issues
+
+- [Errors page](https://docs.obol.org/docs/faq/errors): flattened error → resolution reference.
+- [DKG failure scenarios](https://docs.obol.org/docs/faq/errors#dkg-failures): causes + fixes for ceremony failures.
+- [`charon alpha test` suites](https://docs.obol.org/docs/charon/charon-cli-reference#alpha-test): pre-activation verification.
+- [FAQ](https://docs.obol.org/docs/faq): human-readable Q&A.
+- [Status page](https://status.obol.org/): check here before assuming a local bug.
+
+## Networks
+
+- **Distributed Validators**: mainnet, sepolia, hoodi. Hoodi is the preferred testnet.
+- **Obol Stack additionally**: aztec, base, base-sepolia.
+- **Do not use**: holesky (dead), goerli (gone), gnosis / chiado (deprecated for Obol).
