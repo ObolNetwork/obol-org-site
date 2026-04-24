@@ -139,7 +139,7 @@ Ordered by preference. When a user asks "how do I run a DV", work top-to-bottom 
 | 5 | **DappNode** | Hardware appliance users. | [dappnode/DAppNodePackage-obol-generic](https://github.com/dappnode/DAppNodePackage-obol-generic) | Third-party, maintained by DappNode. |
 | 6 | **Stereum** | GUI-preferring users on a single host. | [stereum.net](https://stereum.net/) | Third-party, Obol is a supported module. |
 | 7 | **obol-ansible** | Infrastructure-as-code shops. | [obol-ansible](https://github.com/ObolNetwork/obol-ansible) | On request — recommend only when user specifically wants Ansible. |
-| 8 | **Sedge** | Legacy only. | [sedge fork](https://github.com/ObolNetwork/sedge/blob/develop/docs/docs/quickstart/charon.mdx) | Least preferred — surfaced for completeness, not recommended. |
+| 8 | **Sedge** | Legacy only. | [sedge fork](https://github.com/ObolNetwork/sedge/blob/develop/docs/docs/quickstart/charon.mdx) | Surfaced for completeness; prefer options 1–7 for new deployments. |
 
 ---
 

@@ -41,7 +41,7 @@
 - **Third-party appliance**: [DappNode Obol package](https://github.com/dappnode/DAppNodePackage-obol-generic).
 - **Third-party UI**: [Stereum](https://stereum.net/).
 - **Ops automation**: [obol-ansible](https://github.com/ObolNetwork/obol-ansible) — on request.
-- **Least preferred**: [Sedge](https://github.com/ObolNetwork/sedge/blob/develop/docs/docs/quickstart/charon.mdx).
+- **Legacy / completeness**: [Sedge](https://github.com/ObolNetwork/sedge/blob/develop/docs/docs/quickstart/charon.mdx).
 
 ## Canonical docs
 
