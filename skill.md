@@ -47,6 +47,10 @@ Walk top-to-bottom; stop at the first branch that matches.
 
 → Install the `obol` binary → [`run-obol-stack`](https://github.com/ObolNetwork/skills/blob/main/skills/run-obol-stack/SKILL.md) (covers `dv-pod` alongside agents). Or for standalone Kubernetes without the Stack: clone [`ObolNetwork/helm-charts`](https://github.com/ObolNetwork/helm-charts) and follow `charts/dv-pod/QUICKSTART.md`. Helm repo: `helm repo add obol https://obolnetwork.github.io/helm-charts/`.
 
+For `dv-pod` specifics (Launchpad auto-DKG, values, upgrades) use the global skill **[dvpod](https://github.com/ObolNetwork/skills/blob/main/skills/dvpod/SKILL.md)**. Two things to get right on any DV node:
+- **Credentials** (Obol monitoring token, beacon-node auth): file → Kubernetes Secret → the chart's `existingSecret` value (`centralMonitoring.existingSecret`, dv-pod 0.22.1+). Never put them in a values file, `--set` or the chat. Hand the user a private file to paste into, and don't read it.
+- **Nickname** (`charon.nickname`, public on the Launchpad and in peers' logs): for an organisation, favour its own name for legitimacy (e.g. `DV Labs`); for private use, favour a pseudonym that doesn't reveal a person, hostname or wallet. Propose one from context and let the user confirm it.
+
 **Want to run a DV node via Docker Compose (solo or small squad)?**
 
 → `git clone https://github.com/ObolNetwork/charon-distributed-validator-node` → read its `CLAUDE.md` for the full setup, client selection, and runtime workflow. The repo ships seven in-repo cluster-edit skills (`add-operators`, `add-validators`, `export-asdb`, `import-asdb`, `recreate-private-keys`, `remove-operators`, `replace-operator`) at `.claude/skills/` for ongoing modifications after the cluster is up.
@@ -117,6 +121,7 @@ Where every nested Obol skill lives, for quick routing:
 - **Pointing VC at the beacon node instead of Charon.** The VC must talk to Charon on port 3600; Charon talks to the beacon node. Most "validator not signing" reports trace here.
 - **Using `charon create cluster` for a real DV.** That command generates all key shares on one machine — it's a local-testing shortcut, not for real multi-operator clusters. Use `charon create dkg` + `charon dkg` instead.
 - **Mixing Charon versions across operators in a cluster.** Pin to the same major/minor. Mismatches have caused incidents.
+- **Putting the monitoring token in Helm values.** Values are stored in the release and printed by `helm get values`. Use a Secret created from a file (see above).
 - **Deploying 32 ETH before verifying the cluster shape.** Run `charon alpha test` suites, visually confirm `cluster-lock.json` operators / withdrawal / fee recipient / network. A bad deposit is weeks of queue time to exit and redeposit.
 - **Targeting a deprecated network.** Holesky is dead, goerli is long gone, gnosis / chiado are deprecated. Redirect to hoodi (testnet) or mainnet.
 - **Backing up `.charon/` to the wrong place.** The `cluster-lock.json`, `validator_keys/`, and `charon-enr-private-key` files are critical. External backup is mandatory; `~/.config/obol/` + the repo checkout aren't enough if the machine dies.
