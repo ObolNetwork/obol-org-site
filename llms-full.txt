@@ -85,7 +85,7 @@ Kubernetes charts for every Obol workload.
 
 ### Other supporting products
 
-- **obol-monitoring** global skill — diagnose live DV cluster issues via Obol's hosted Grafana (Prometheus + Loki).
+- **Obol agent skills** — the `obol` Claude Code plugin ([ObolNetwork/skills](https://github.com/ObolNetwork/skills), docs at [docs.obol.org/agent-skills](https://docs.obol.org/agent-skills)): eight global skills plus a bundled read-only [Obol MCP server](https://github.com/ObolNetwork/obol-mcp) for the public Obol API. See the inventory at the end of this file.
 - **obol-ansible** — infrastructure-as-code for DV node ops. On request.
 - **obol-security** — security policy and responsible disclosure.
 - **terraform-charon-relay** and **terraform-grafana-dashboards** — Terraform helpers.
@@ -95,7 +95,7 @@ Kubernetes charts for every Obol workload.
 
 - `charon-k8s-distributed-validator-node` / `charon-k8s-distributed-validator-cluster` — archived, superseded by `helm-charts`.
 - `obol-frontend`, `obol-frontend-challenge`, `obol-blog` — archived.
-- `obol-docs` — stale; `obol-gitbook` powers [docs.obol.org](https://docs.obol.org).
+- `obol-gitbook` — archived; [docs.obol.org](https://docs.obol.org) is built from `obol-docs`.
 - `obol-site` — old landing page, superseded by obol-org-site.
 - `obol-cli`, `obol-install` — deprecated.
 
@@ -567,8 +567,9 @@ Fund storage contract used by 0xSplits' V2 splits.
 
 ### Monitoring
 
-- **Live cluster diagnostics (hosted)**: [obol-monitoring](https://github.com/ObolNetwork/skills/blob/main/skills/obol-monitoring/SKILL.md) skill — Obol's hosted Grafana with Prometheus + Loki.
-- **Local monitoring**: shipped with CDVN / LCDVN (Prometheus + Grafana + Loki in-stack). A `local-monitoring` skill is in development.
+- **Live cluster diagnostics (hosted)**: [obol-monitoring](https://github.com/ObolNetwork/skills/blob/main/skills/obol-monitoring/SKILL.md) skill — Obol's hosted Grafana with Prometheus + Loki. Its triage classes every peer from what the others see, so an offline peer that sends nothing still shows up.
+- **Public cluster data**: [distributed-validators](https://github.com/ObolNetwork/skills/blob/main/skills/distributed-validators/SKILL.md) skill — lock contents, effectiveness, exits and who runs each peer, from the public Obol API (MCP or `curl`, no credentials).
+- **Local monitoring**: shipped with CDVN / LCDVN (Prometheus + Grafana + Loki in-stack), queried by the in-repo `local-monitoring` skill. For a DVpod, use [dvpod-monitoring](https://github.com/ObolNetwork/skills/blob/main/skills/dvpod-monitoring/SKILL.md).
 - Set `PROM_REMOTE_WRITE_TOKEN` and `CHARON_LOKI_ADDRESSES` in your `.env` to push metrics + logs to Obol's hosted stack for fleet visibility.
 - Alert on `app_monitoring_readyz != 1` for any peer in the cluster.
 
@@ -656,10 +657,11 @@ Non-ignored Obol repos with agent-readiness status. Ignored repos (archived / de
 | [charon-distributed-validator-node](https://github.com/ObolNetwork/charon-distributed-validator-node) | Docker Compose DV launcher | `CLAUDE.md` present; 7 in-repo cluster-edit skills |
 | [lido-charon-distributed-validator-node](https://github.com/ObolNetwork/lido-charon-distributed-validator-node) | Lido Simple DVT variant | `CLAUDE.md` present |
 | [helm-charts](https://github.com/ObolNetwork/helm-charts) | K8s Helm charts (`dv-pod`, `obol-app`, etc.) | `CLAUDE.md` present; in-chart QUICKSTART + TROUBLESHOOT |
-| [skills](https://github.com/ObolNetwork/skills) | Global agent skills | `run-obol-stack`, `test-a-dv-cluster`, `create-cluster-invitation`, `obol-monitoring` |
+| [skills](https://github.com/ObolNetwork/skills) | Global agent skills (the `obol` Claude Code plugin) | 8 skills + bundled Obol MCP server; see inventory below |
+| [obol-mcp](https://github.com/ObolNetwork/obol-mcp) | Read-only MCP server for the public Obol API | Bundled in the skills plugin (`uvx obol-mcp`) |
 | [charon-dkg-sidecar](https://github.com/ObolNetwork/charon-dkg-sidecar) | K8s sidecar for `dv-pod` DKG | `CLAUDE.md` present |
 | [distributed-validator-specs](https://github.com/ObolNetwork/distributed-validator-specs) | Protocol spec | `CLAUDE.md` present |
-| [obol-gitbook](https://github.com/ObolNetwork/obol-gitbook) | Docs source (powers docs.obol.org) | `CLAUDE.md` present |
+| [obol-docs](https://github.com/ObolNetwork/obol-docs) | Docs source (Docusaurus, powers docs.obol.org) | Replaces the archived `obol-gitbook` |
 | [obol-api](https://github.com/ObolNetwork/obol-api) | NestJS backend | Private repo; `llms.txt` at [api.obol.tech/llms.txt](https://api.obol.tech/llms.txt) |
 | [dv-launchpad](https://github.com/ObolNetwork/dv-launchpad) | Hosted UI | Private repo; `llms.txt` at [launchpad.obol.org/llms.txt](https://launchpad.obol.org/llms.txt) |
 | [remote-signer](https://github.com/ObolNetwork/remote-signer) | Remote signer for agents' wallets | `CLAUDE.md` present |
@@ -670,21 +672,21 @@ Non-ignored Obol repos with agent-readiness status. Ignored repos (archived / de
 
 ### Agent skills inventory
 
-Four global skills + one per-product skill:
+Eight global skills (the `obol` Claude Code plugin: `claude plugin marketplace add ObolNetwork/skills && claude plugin install obol@obol`), plus per-product skills:
 
 | Skill | Location | One-line purpose |
 |-------|----------|-------------------|
 | `run-obol-stack` | global `skills/skills/run-obol-stack/` | Install / boot / operate / productise the Stack (outside-agent helping a human). |
 | `create-cluster-invitation` | global `skills/skills/create-cluster-invitation/` | Create a DV cluster-definition via `charon create dkg` (preferred) or SDK. |
 | `test-a-dv-cluster` | global `skills/skills/test-a-dv-cluster/` | `charon alpha test` wrapper with `--publish` + ENR correlation. |
-| `obol-monitoring` | global `skills/skills/obol-monitoring/` | Live DV diagnostics via Obol's hosted Grafana. |
+| `obol-monitoring` | global `skills/skills/obol-monitoring/` | Diagnose clusters, nodes and the fleet via Obol's hosted Grafana: missed duties, offline peers, slot timelines, largest clusters by stake. |
+| `distributed-validators` | global `skills/skills/distributed-validators/` | Public Obol API lookups (MCP or `curl`): locks, effectiveness, exits, operators, who runs a peer. |
+| `dvpod` | global `skills/skills/dvpod/` | Deploy, upgrade, back up, recover a DV on Kubernetes with the `dv-pod` chart. |
+| `dvpod-monitoring` | global `skills/skills/dvpod-monitoring/` | Read-only metrics and log queries against a deployed DVpod. |
+| `dv-steward` | global `skills/skills/dv-steward/` | The Obol Stack's agent watches its own node and dv-pods on a schedule and alerts you. |
 | `deploy-obol-ovm` | `obol-splits/.claude/skills/deploy-obol-ovm/` | OVM factory deploy, roles, distribute, sweep, withdraw, consolidate, deposit. |
-| CDVN edit skills (7) | `charon-distributed-validator-node/.claude/skills/` | add/remove operators, add validators, export/import ASDB, recreate private keys, replace operator. |
+| CDVN / LCDVN in-repo skills (8 each) | `charon-distributed-validator-node/.claude/skills/`, `lido-charon-distributed-validator-node/.claude/skills/` | add/remove operators, add validators, export/import ASDB, recreate private keys, replace operator, and `local-monitoring` for the node's own Prometheus/Loki/Grafana. |
 
-**Backlog**:
-
-- `local-monitoring` — CDVN/LCDVN-local Grafana/Prometheus querying. Waits on another dev's dashboard refresh.
-- LCDVN skill set — will mirror CDVN's once CDVN's is stable.
 
 ---
 
