@@ -6,7 +6,7 @@
 
 - [Obol home](https://obol.org): product pages and landing.
 - [Documentation](https://docs.obol.org/): concepts, how-to, reference.
-- [Agent index for docs](https://docs.obol.org/llms.txt): auto-generated from GitBook.
+- [Agent index for docs](https://docs.obol.org/llms.txt): auto-generated from the docs site (`obol-docs`).
 - [GitHub org](https://github.com/ObolNetwork): all Obol repos (public + some private).
 - [Whitepaper](https://obol.org/Obol_Whitepaper_MiCA.pdf): foundational design rationale, MiCA-friendly edition.
 - [Status page](https://status.obol.org/): live service health.
@@ -24,12 +24,17 @@
 
 ## Agent skills
 
-- [Global skills repo](https://github.com/ObolNetwork/skills): `skills/skills/<name>/SKILL.md` for skills that don't require cloning a product repo.
+- [Global skills repo](https://github.com/ObolNetwork/skills): the `obol` Claude Code plugin (`claude plugin marketplace add ObolNetwork/skills && claude plugin install obol@obol`); `skills/<name>/SKILL.md` for skills that don't require cloning a product repo. Docs: [docs.obol.org/agent-skills](https://docs.obol.org/agent-skills).
 - [obol.org/skill.md](https://obol.org/skill.md): router skill — start here to dispatch to the right nested skill.
 - [run-obol-stack](https://github.com/ObolNetwork/skills/blob/main/skills/run-obol-stack/SKILL.md): install, boot, and productise the Obol Stack.
 - [create-cluster-invitation](https://github.com/ObolNetwork/skills/blob/main/skills/create-cluster-invitation/SKILL.md): create a DV cluster-definition via `charon create dkg` (preferred) or the SDK.
 - [test-a-dv-cluster](https://github.com/ObolNetwork/skills/blob/main/skills/test-a-dv-cluster/SKILL.md): `charon alpha test` wrapper (infra / peers / beacon / validator / mev / all).
-- [obol-monitoring](https://github.com/ObolNetwork/skills/blob/main/skills/obol-monitoring/SKILL.md): diagnose live DV cluster issues via Obol's hosted Grafana (Prometheus + Loki).
+- [obol-monitoring](https://github.com/ObolNetwork/skills/blob/main/skills/obol-monitoring/SKILL.md): diagnose clusters, nodes and the fleet via Obol's hosted Grafana (Prometheus + Loki): missed duties, offline peers, slot timelines, largest clusters by stake.
+- [distributed-validators](https://github.com/ObolNetwork/skills/blob/main/skills/distributed-validators/SKILL.md): read-only public Obol API lookups: cluster locks, effectiveness, exits, operators, who runs a peer.
+- [dvpod](https://github.com/ObolNetwork/skills/blob/main/skills/dvpod/SKILL.md): deploy, upgrade, back up and troubleshoot a DV on Kubernetes with the `dv-pod` Helm chart.
+- [dvpod-monitoring](https://github.com/ObolNetwork/skills/blob/main/skills/dvpod-monitoring/SKILL.md): read-only metrics and log queries against a deployed DVpod.
+- [dv-steward](https://github.com/ObolNetwork/skills/blob/main/skills/dv-steward/SKILL.md): the Obol Stack's agent watches its own node and dv-pods on a schedule and alerts you.
+- [Obol MCP server](https://github.com/ObolNetwork/obol-mcp): read-only MCP tools for the public Obol API, bundled in the skills plugin (`uvx obol-mcp`).
 - [deploy-obol-ovm](https://github.com/ObolNetwork/obol-splits/blob/main/.claude/skills/deploy-obol-ovm/SKILL.md): deploy and manage Obol Validator Manager smart contracts. Lives in `obol-splits`; clone that repo.
 
 ## Run a Distributed Validator (ordered by preference)
